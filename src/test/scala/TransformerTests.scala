@@ -28,7 +28,7 @@ class TransformerTests extends AnyFlatSpec with GivenWhenThen {
     ).toDF("Name")
 
     When("changing the marital status")
-    val dataFrameWithMarital = addMaritalStatus.transform(dataFrame)
+    val dataFrameWithMarital = AddMaritalStatus.transform(dataFrame)
 
     Then("it should add a column named Marital Status")
     assert(dataFrameWithMarital.columns === Seq("Name", "Marital Status"))
@@ -44,7 +44,7 @@ class TransformerTests extends AnyFlatSpec with GivenWhenThen {
     ).toDF("Age", "Fare", "Embarked", "Pclass", "Name", "Survived")
 
     When("running prepareDataType transformer")
-    val dataFrameWithCorrectType = prepareDataType.transform(dataFrame)
+    val dataFrameWithCorrectType = PrepareDataType.transform(dataFrame)
     val schema = dataFrameWithCorrectType.schema
 
     val newSchema = StructType(List(StructField(
@@ -69,7 +69,7 @@ class TransformerTests extends AnyFlatSpec with GivenWhenThen {
     ).toDF("Embarked")
 
     When("running prepareEmbarked transformer")
-    val dataFrameWithEmbarked = prepareEmbarked.transform(dataFrame)
+    val dataFrameWithEmbarked = PrepareEmbarked.transform(dataFrame)
     val ListOfEmbarked = dataFrameWithEmbarked.select("Embarked").rdd.map(r => r(0)).collect.toList
 
 
@@ -87,7 +87,7 @@ class TransformerTests extends AnyFlatSpec with GivenWhenThen {
     ).toDF("Marital Status", "Age")
 
     When("running fillNullAge transformer")
-    val dataFrameWithoutNull= fillNullAge.transform(dataFrame)
+    val dataFrameWithoutNull= FillNullAge.transform(dataFrame)
     val ListOfAges = dataFrameWithoutNull.select("Age").rdd.map(r => r(0)).collect.toList
 
 

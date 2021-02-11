@@ -1,30 +1,34 @@
-package titanic
+import common.Pipeline
+import org.apache.spark.internal.Logging
+import titanic.Transformer.Transformers
+import titanic.sources.TitanicDataBase
+import titanic.provider.SparkSessionProvider
+import titanic.common.{Evaluator, TrainSplitter}
+import titanic.models.RandomForest
 
-import Transformer.Transformers
-import org.apache.spark.sql.SparkSession
-
-object Main extends App {
+object Main extends App with SparkSessionProvider with Logging {
   val transformers = new Transformers()
+
   import transformers._
-  import Pipeline.Pipeline.{pipeline, evaluator}
 
-  val spark = SparkSession.builder.
-    master("local")
-    .appName("spark session example")
-    .getOrCreate()
+  val spark = getSparkSession
+  logInfo("Building sparkSession")
+  val df = TitanicDataBase(spark).load
 
-  val df = spark
-    .read.format("csv").option("header", "true").option("separator", ",")
-    .load("src/main/resources/train.csv")
+  val dataPreparation = Seq(PrepareDataType,
+    AddMaritalStatus,
+    FillNullAge,
+    PrepareEmbarked,
+    MaritalStatusEncoder,
+    EmbarkedEncoder,
+    Classifier(Array("Age"), "AgeClass"),
+    Classifier(Array("Fare"), "FareClass"))
 
-  val dataPreparation = Seq(prepareDataType, addMaritalStatus, fillNullAge, prepareEmbarked)
-  val dataPrepared = dataPreparation.foldLeft(df)((df, transformer) => transformer.transform(df))
-  val splits = dataPrepared.randomSplit(Array(0.75, 0.25))
+  val dataPrepared = Pipeline(dataPreparation: _*).transform(df)
+  val split = TrainSplitter(dataPrepared, Array(0.75, 0.25)).split
+  val model = RandomForest(Array("FareClass", "AgeClass", "Marital Status", "Embarked", "Pclass"), "Survived", split(0))
+  val resultatModel: Double = Evaluator("Survived", model.transform(split(1))).evaluate
 
-  val df_train = splits(0)
-  val df_test = splits(1)
-
-  val resultatModel: Double = evaluator.evaluate(pipeline.fit(df_train).transform(df_test))
-  println(s"The accucary is $resultatModel %")
+  logInfo(s"The accuracy is $resultatModel %")
 
 }
